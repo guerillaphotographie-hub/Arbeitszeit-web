@@ -21,7 +21,7 @@
   var entries = load('az_entries', {});
   var settings = Object.assign({
     company: '', employee: '', project: '', // werden einmalig in den Einstellungen eingetragen (nur lokal gespeichert)
-    defStart: 450, defEnd: 960, defPause: 30, theme: 'system', layout: 'auto'
+    defStart: 450, defEnd: 960, defPause: 30, theme: 'system', layout: 'auto', monthView: 'list'
   }, load('az_settings', {}));
 
   /** Design anwenden: 'light' / 'dark' setzen data-theme, 'system' folgt dem Gerät */
@@ -56,7 +56,9 @@
   var ICONS = {
     auto: '<rect x="2" y="5" width="14" height="10" rx="1.5"/><rect x="13" y="9" width="8" height="12" rx="1.5"/>',
     mobile: '<rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/>',
-    desktop: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>'
+    desktop: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
+    list: '<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'
   };
   var VIEW_LABEL = { auto: 'Auto', mobile: 'Mobil', desktop: 'Desktop' };
   var DESKTOP_MIN_WIDTH = 900; // ab dieser Fensterbreite (CSS-Pixel) schaltet "Auto" auf Desktop
@@ -196,6 +198,52 @@
   }
 
   // ------------------------------------------------------------ Monatsansicht
+  /** Kalenderraster (Mo–So) für den angezeigten Monat */
+  function buildCalendar() {
+    var cal = $('cal'); cal.innerHTML = '';
+    var head = document.createElement('div'); head.className = 'calhead';
+    AZ.DAYS.forEach(function (name) { var s = document.createElement('span'); s.textContent = name; head.appendChild(s); });
+    var grid = document.createElement('div'); grid.className = 'calgrid';
+    var n = AZ.daysInMonth(view.y, view.m), lead = AZ.weekday(view.y, view.m, 1), tk = todayKey();
+    for (var i = 0; i < lead; i++) {
+      var emp = document.createElement('div'); emp.className = 'cell empty'; grid.appendChild(emp);
+    }
+    for (var d = 1; d <= n; d++) {
+      var k = AZ.key(view.y, view.m, d), e = entries[k], isRun = run && run.date === k;
+      var main = '', times = '', cls = 'cell';
+      if (AZ.isWeekend(view.y, view.m, d)) cls += ' we';
+      if (k === tk) cls += ' today';
+      if (isRun) cls += ' run';
+      if (e && e.s != null) {
+        if (e.e != null) { main = AZ.dur(AZ.net(e)) + ' h'; times = AZ.hhmm(e.s) + '–' + AZ.hhmm(e.e); }
+        else if (isRun) { main = 'läuft'; times = AZ.hhmm(e.s) + '–'; }
+        else { main = 'offen'; times = AZ.hhmm(e.s) + '–?'; cls += ' open'; }
+      }
+      var note = e && e.n ? e.n : '';
+      var c = document.createElement('button');
+      c.type = 'button'; c.className = cls; c.dataset.key = k;
+      c.innerHTML = '<span class="cn"></span><span class="cv"></span><span class="ct"></span><span class="cx"></span>';
+      c.children[0].textContent = d;
+      c.children[1].textContent = main;
+      c.children[2].textContent = times;
+      c.children[3].textContent = note;
+      c.setAttribute('aria-label', AZ.DAYS[AZ.weekday(view.y, view.m, d)] + ' ' + AZ.two(d) + '.' + AZ.two(view.m) + '.' +
+        (main ? ', ' + main : '') + (note ? ', ' + note : ''));
+      grid.appendChild(c);
+    }
+    cal.appendChild(head); cal.appendChild(grid);
+  }
+
+  /** Liste oder Kalender anzeigen, Button passend beschriften */
+  function applyMonthMode() {
+    var cal = settings.monthView === 'cal';
+    $('list').hidden = cal; $('cal').hidden = !cal; $('thead').hidden = cal;
+    $('icoMode').innerHTML = cal ? ICONS.list : ICONS.calendar;
+    $('modeLbl').textContent = cal ? 'Liste' : 'Kalender';
+    var tip = cal ? 'Zur Listenansicht wechseln' : 'Zur Kalenderansicht wechseln';
+    $('bMode').title = tip; $('bMode').setAttribute('aria-label', tip);
+  }
+
   function render() {
     $('monthLabel').textContent = AZ.MONTHS[view.m - 1] + ' ' + view.y;
     var list = $('list'); list.innerHTML = '';
@@ -240,10 +288,13 @@
       '<span class="s"><small>Netto</small><b>' + AZ.dur(sumNet) + ' h</b></span>' +
       '<span class="s"><small>Pausen</small><b>' + AZ.dur(sumPause) + ' h</b></span>' +
       '<span class="s"><small>' + (worked === 1 ? 'Tag' : 'Tage') + '</small><b>' + worked + '</b></span>';
+    buildCalendar();
+    applyMonthMode();
     tick();
   }
 
   function scrollToToday() {
+    if (settings.monthView === 'cal') return;
     var t = today(), list = $('list');
     if (view.y === t.y && view.m === t.m) {
       var row = list.querySelector('[data-key="' + todayKey() + '"]');
@@ -318,7 +369,7 @@
     if (isNaN(p) || p < 0) { err.textContent = 'Bitte die Pause in Minuten angeben.'; return false; }
     var wasWide = wantsWide(settings.layout);
     settings = { company: $('sCompany').value.trim(), employee: $('sEmployee').value.trim(), project: $('sProject').value.trim(),
-      defStart: s, defEnd: e, defPause: p, theme: $('sTheme').value, layout: $('sLayout').value };
+      defStart: s, defEnd: e, defPause: p, theme: $('sTheme').value, layout: $('sLayout').value, monthView: settings.monthView };
     save('az_settings', settings);
     if (wasWide !== wantsWide(settings.layout)) { location.reload(); return true; }
     applyTheme();
@@ -421,6 +472,17 @@
   $('list').onclick = function (ev) {
     var row = ev.target.closest && ev.target.closest('.row');
     if (row) openDay(row.dataset.key);
+  };
+  $('cal').onclick = function (ev) {
+    var cell = ev.target.closest && ev.target.closest('.cell[data-key]');
+    if (cell) openDay(cell.dataset.key);
+  };
+  // Kleiner Button neben der Monatsauswahl: Liste <-> Kalender (Wahl bleibt gespeichert)
+  $('bMode').onclick = function () {
+    settings.monthView = settings.monthView === 'cal' ? 'list' : 'cal';
+    save('az_settings', settings);
+    render();
+    scrollToToday();
   };
   $('fOff').onchange = syncOff;
   $('bDefault').onclick = function () {

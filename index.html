@@ -75,6 +75,7 @@ nav{order:2;display:flex;align-items:center}
 #bStart{background:var(--green)}#bStart.run{background:var(--red)}
 #bPause{background:var(--amber)}#bPause.resume{background:var(--btn)}
 nav button{width:52px;height:44px;font-size:22px}
+nav #bMode{width:auto;height:44px;font-size:15px;margin-left:8px;padding:0 12px}
 #monthLabel{flex:1;text-align:center;font-size:18px;font-weight:700;background:none;padding:8px}
 
 #list{flex:1;overflow-y:auto;background:var(--card);border-radius:12px;min-height:120px;-webkit-overflow-scrolling:touch}
@@ -89,6 +90,24 @@ nav button{width:52px;height:44px;font-size:22px}
 .i{grid-area:i;font-size:12px;color:var(--grey);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .p:not([hidden])+.nt:not(:empty)::before{content:"·";margin:0 6px}
 .n{grid-area:n;text-align:right;font-weight:700}
+
+/* ---------- Kalenderansicht ---------- */
+#cal{order:4;flex:1;min-height:120px;overflow-y:auto;background:var(--card);border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:4px}
+.calhead,.calgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.calhead{text-align:center;font-size:12px;font-weight:700;color:var(--grey)}
+.calgrid{flex:1;grid-auto-rows:minmax(56px,1fr)}
+.cell{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0;overflow:hidden;padding:4px 2px;border-radius:8px;
+  background:var(--card);border:1px solid var(--line);text-align:center}
+.cell.empty{background:transparent;border-color:transparent}
+.cell.we{background:var(--weekend)}
+.cell.today{background:var(--today);border-color:var(--primary);border-width:2px}
+.cell.run{background:var(--running)}
+.cn{align-self:flex-start;padding-left:3px;font-size:12px;font-weight:700}
+.we .cn{color:var(--grey)}
+.cv{max-width:100%;font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cell.open .cv{color:var(--amber)}.cell.run .cv{color:var(--green)}
+.ct{display:none;font-size:12px;color:var(--grey)}
+.cx{max-width:100%;font-size:10px;color:var(--grey);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 #sum{display:flex;flex-wrap:wrap;justify-content:center;gap:2px 14px;font-size:14px}
 .s small{color:var(--grey);font-size:inherit;margin-right:5px}
@@ -159,6 +178,18 @@ html[data-view="desktop"] .p .lbl{display:none}
 html[data-view="desktop"] .nt{grid-area:nt;font-size:14px;color:var(--grey);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 html[data-view="desktop"] .p:not([hidden])+.nt:not(:empty)::before{content:none}
 html[data-view="desktop"] dialog{width:min(92vw,480px)}
+html[data-view="desktop"] nav #bMode .lbl{display:inline}
+html[data-view="desktop"] #cal{min-height:0;padding:12px;gap:8px}
+html[data-view="desktop"] .calhead{font-size:13px}
+html[data-view="desktop"] .calgrid{grid-auto-rows:minmax(84px,1fr);gap:8px}
+html[data-view="desktop"] .cell{align-items:flex-start;text-align:left;padding:8px 10px;gap:3px;cursor:pointer}
+html[data-view="desktop"] .cell:hover:not(.empty){filter:brightness(.96)}
+html[data-view="desktop"] .cell.empty{cursor:default}
+html[data-view="desktop"] .cell:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+html[data-view="desktop"] .cn{padding:0;font-size:14px}
+html[data-view="desktop"] .cv{font-size:15px}
+html[data-view="desktop"] .ct{display:block}
+html[data-view="desktop"] .cx{font-size:12px}
 </style>
 </head>
 <body>
@@ -195,9 +226,11 @@ html[data-view="desktop"] dialog{width:min(92vw,480px)}
       <button class="chip" id="bPrev" type="button" aria-label="Voriger Monat">‹</button>
       <button id="monthLabel" type="button" title="Zum aktuellen Monat springen"></button>
       <button class="chip" id="bNext" type="button" aria-label="Nächster Monat">›</button>
+      <button class="chip ibtn" id="bMode" type="button"><svg id="icoMode" viewBox="0 0 24 24" aria-hidden="true"></svg><span class="lbl" id="modeLbl">Kalender</span></button>
     </nav>
     <div id="thead" aria-hidden="true"><span>Datum</span><span>Zeit</span><span>Pause</span><span class="r">Netto</span><span>Stichworte</span></div>
     <div id="list"></div>
+    <div id="cal" hidden></div>
   </section>
 </main>
 
