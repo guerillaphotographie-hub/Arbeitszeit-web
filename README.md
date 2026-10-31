@@ -1,21 +1,9 @@
 # Arbeitszeit – Web-App (iPhone, Android, Computer)
 
-Gleiche Funktionen wie die Android-App: Start/Stopp, Pause, Monatsansicht, jeden Tag editierbar, Standardzeit
+Start/Stopp, Pause, Monatsansicht, jeden Tag editierbar, Standardzeit
 7:30–16:00 mit 30 min Pause, Design Hell/Dunkel/System und Excel-Export im Layout deiner Vorlage.
 Die App läuft im Browser, lässt sich wie eine App auf den Home-Bildschirm legen und funktioniert danach auch offline.
 Auf dem Computer zeigt sie sich in einer breiten Ansicht mit Tabelle, auf dem Handy in der schmalen Ansicht; der Wechsel passiert automatisch.
-
-## Online stellen mit GitHub Pages (einmalig, kostenlos)
-
-1. Auf <https://github.com> anmelden und oben rechts **+ → New repository** wählen.
-2. Name z. B. `arbeitszeit-web`. **Wichtig: „Public“ wählen.** Kostenlose Konten können GitHub Pages nur mit öffentlichen Repositories nutzen.
-   In diesem Repository liegt nur der Programmcode, keine persönlichen Daten (siehe unten). **Create repository**.
-3. Dieses ZIP entpacken. Im neuen Repository auf **uploading an existing file** klicken und den **kompletten Inhalt** des entpackten Ordners hineinziehen
-   (die Dateien `index.html`, `app.js`, `core.js`, `xlsx-assets.js`, `sw.js`, `manifest.webmanifest` und den **Ordner `icons`**). Dann **Commit changes**.
-4. Oben auf **Settings → Pages** (linke Seitenleiste). Unter „Build and deployment“ bei **Source** „Deploy from a branch“ wählen,
-   bei **Branch** `main` und `/ (root)`, dann **Save**.
-5. Nach ein bis zwei Minuten (Seite neu laden) steht oben auf der Pages-Seite die Adresse, meist
-   `https://DEIN-NAME.github.io/arbeitszeit-web/`. Diese Adresse ist deine App.
 
 ## Auf dem Handy installieren
 
