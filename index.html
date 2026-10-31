@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" id="vp" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arbeitszeit</title>
 <meta name="theme-color" content="#1f6f8b">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -10,9 +10,12 @@
 <meta name="apple-mobile-web-app-title" content="Arbeitszeit">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script>
-/* Design vor dem ersten Zeichnen setzen, damit es nicht aufblitzt */
-try{var s=JSON.parse(localStorage.getItem('az_settings')||'{}');
-if(s.theme==='light'||s.theme==='dark')document.documentElement.setAttribute('data-theme',s.theme);}catch(e){}
+/* Design und Ansicht vor dem ersten Zeichnen setzen, damit nichts aufblitzt */
+try{var s=JSON.parse(localStorage.getItem('az_settings')||'{}'),r=document.documentElement;
+if(s.theme==='light'||s.theme==='dark')r.setAttribute('data-theme',s.theme);
+var vp=document.getElementById('vp');
+if(vp&&s.layout==='desktop'&&Math.min(screen.width,screen.height)<700)vp.setAttribute('content','width=1100');
+r.setAttribute('data-view',s.layout==='desktop'?'desktop':s.layout==='mobile'?'mobile':(window.innerWidth>=900?'desktop':'mobile'));}catch(e){}
 </script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -35,41 +38,68 @@ if(s.theme==='light'||s.theme==='dark')document.documentElement.setAttribute('da
   color-scheme:dark;
   --bg:#101316;--card:#1b2026;--text:#eef1f4;--grey:#9aa5b1;--primary:#59b3d1;--green:#388e3c;--line:#2b323a;
   --today:#16323d;--weekend:#161b20;--running:#17301a;--chip:#26323a}
+
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none !important}
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--text);font:16px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   display:flex;flex-direction:column;padding:max(12px,env(safe-area-inset-top)) 12px max(10px,env(safe-area-inset-bottom));
   max-width:640px;margin:0 auto;gap:10px}
-header{display:flex;align-items:center;gap:8px}
-h1{font-size:22px;margin:0;flex:1}
 button{font:inherit;color:inherit;border:0;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+/* ---------- Kopfzeile ---------- */
+header{display:flex;align-items:center;gap:8px;order:0}
+h1{font-size:22px;margin:0;flex:1}
 .chip{background:var(--chip);color:var(--primary);border-radius:10px;padding:10px 14px;font-size:15px}
+.ibtn{display:inline-flex;align-items:center;gap:6px;padding:9px 12px;min-height:40px}
+.ibtn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ibtn .lbl{display:none}
+#viewLbl{font-size:14px}
+
+/* ---------- Aufbau: auf dem Handy eine Spalte (Reihenfolge per order) ---------- */
+#layout,#side,#monthPane{display:contents}
+#timer{order:1}
+nav{order:2;display:flex;align-items:center}
+#thead{order:3;display:none}
+#list{order:4}
+#sum{order:5}
+.actions{order:6;display:flex;gap:12px}
+
 .card{background:var(--card);border-radius:16px;padding:14px 16px}
 #status{font-size:20px;font-weight:700}
 #sub{color:var(--grey);font-size:15px;margin-top:2px}
 .btns{display:flex;gap:12px;margin-top:12px}
 .big{flex:1;height:56px;border-radius:12px;color:#fff;font-size:18px;font-weight:700}
-.big:disabled{opacity:.4}
+.big:disabled{opacity:.4;cursor:default}
 #bStart{background:var(--green)}#bStart.run{background:var(--red)}
 #bPause{background:var(--amber)}#bPause.resume{background:var(--btn)}
-nav{display:flex;align-items:center}
 nav button{width:52px;height:44px;font-size:22px}
 #monthLabel{flex:1;text-align:center;font-size:18px;font-weight:700;background:none;padding:8px}
+
 #list{flex:1;overflow-y:auto;background:var(--card);border-radius:12px;min-height:120px;-webkit-overflow-scrolling:touch}
-.row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--card);padding:8px 12px;min-height:54px;border-bottom:1px solid var(--line)}
+.row{display:grid;grid-template-columns:52px minmax(0,1fr) 70px;grid-template-areas:"d t n" "d i n";column-gap:10px;align-items:center;
+  width:100%;text-align:left;background:var(--card);padding:8px 12px;min-height:54px;border-bottom:1px solid var(--line)}
 .row.we{background:var(--weekend)}.row.today{background:var(--today)}.row.run{background:var(--running)}
-.d{width:52px;font-weight:700;font-size:14px;line-height:1.25}.we .d{color:var(--grey)}
-.m{flex:1;min-width:0}
-.t{font-size:16px}.t.live{color:var(--green)}.t.open{color:var(--amber)}.t.none{color:var(--grey)}
-.i{font-size:12px;color:var(--grey);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.n{width:70px;text-align:right;font-weight:700}
-#sum{text-align:center;font-size:14px}
-.actions{display:flex;gap:12px}
+.d{grid-area:d;font-weight:700;font-size:14px;line-height:1.25}
+.d span{display:block}
+.we .d{color:var(--grey)}
+.t{grid-area:t;font-size:16px}
+.t.live{color:var(--green)}.t.open{color:var(--amber)}.t.none{color:var(--grey)}
+.i{grid-area:i;font-size:12px;color:var(--grey);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p:not([hidden])+.nt:not(:empty)::before{content:"·";margin:0 6px}
+.n{grid-area:n;text-align:right;font-weight:700}
+
+#sum{display:flex;flex-wrap:wrap;justify-content:center;gap:2px 14px;font-size:14px}
+.s small{color:var(--grey);font-size:inherit;margin-right:5px}
+.s b{font-weight:700}
 .actions button{height:48px;border-radius:12px;color:#fff;font-size:14px;font-weight:700}
 #bFill{flex:1;background:var(--btngrey)}#bExport{flex:1.4;background:var(--btn)}
-dialog{border:0;border-radius:16px;padding:0;width:min(92vw,420px);background:var(--card);color:var(--text)}
+
+/* ---------- Dialoge ---------- */
+dialog{border:0;border-radius:16px;padding:0;width:min(92vw,420px);max-height:92vh;background:var(--card);color:var(--text)}
 dialog::backdrop{background:rgba(0,0,0,.45)}
-dialog form{padding:18px 20px 14px;display:flex;flex-direction:column;gap:4px}
+dialog form{padding:18px 20px 14px;display:flex;flex-direction:column;gap:4px;max-height:92vh;overflow:auto}
 dialog h2{margin:0 0 6px;font-size:18px}
 label{font-size:13px;color:var(--grey);margin-top:8px}
 input[type=text],input[type=time],input[type=number],select{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;width:100%}
@@ -81,37 +111,95 @@ input[type=text],input[type=time],input[type=number],select{font:inherit;color:v
 .dlgbtns button{padding:11px 16px;border-radius:10px;background:var(--chip);color:var(--primary);font-weight:600}
 .dlgbtns .ok{background:var(--btn);color:#fff}
 .dlgbtns .del{margin-right:auto;color:var(--red)}
-#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center;z-index:100}
 #toast.show{opacity:1}
+
+/* ==========================================================================
+   Desktop-Ansicht (automatisch ab 900 px Breite, oder manuell über den Button)
+   ========================================================================== */
+html[data-view="desktop"] body{max-width:1240px;padding:max(20px,env(safe-area-inset-top)) 28px 24px;gap:18px}
+html[data-view="desktop"] h1{font-size:26px}
+html[data-view="desktop"] header{gap:10px}
+html[data-view="desktop"] .ibtn{padding:9px 14px}
+html[data-view="desktop"] .ibtn .lbl{display:inline;font-size:14px}
+
+html[data-view="desktop"] #layout{display:grid;grid-template-columns:360px minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:24px;flex:1;min-height:0}
+html[data-view="desktop"] #side{display:flex;flex-direction:column;gap:14px;align-self:start}
+html[data-view="desktop"] #monthPane{display:flex;flex-direction:column;min-height:0}
+html[data-view="desktop"] #status{font-size:22px}
+html[data-view="desktop"] .big{height:60px}
+html[data-view="desktop"] .big:not(:disabled):hover{filter:brightness(1.08)}
+
+html[data-view="desktop"] #sum{background:var(--card);border-radius:16px;padding:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+html[data-view="desktop"] .s{display:flex;flex-direction:column;gap:3px}
+html[data-view="desktop"] .s small{order:-1;margin:0;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+html[data-view="desktop"] .s b{font-size:20px}
+html[data-view="desktop"] .actions{flex-direction:column}
+html[data-view="desktop"] .actions button,html[data-view="desktop"] #bFill,html[data-view="desktop"] #bExport{flex:none;height:48px;font-size:15px}
+html[data-view="desktop"] .actions button:hover{filter:brightness(1.08)}
+
+html[data-view="desktop"] nav{margin-bottom:10px}
+html[data-view="desktop"] nav .chip:hover,html[data-view="desktop"] .chip:hover{filter:brightness(.96)}
+html[data-view="desktop"] #monthLabel{font-size:20px;cursor:pointer}
+
+html[data-view="desktop"] #thead{display:grid;grid-template-columns:130px 170px 110px 100px minmax(0,1fr);column-gap:12px;padding:10px 16px;
+  font-size:12px;font-weight:700;color:var(--grey);text-transform:uppercase;letter-spacing:.05em;background:var(--card);
+  border-radius:12px 12px 0 0;border-bottom:1px solid var(--line)}
+html[data-view="desktop"] #thead .r{text-align:right}
+html[data-view="desktop"] #list{border-radius:0 0 12px 12px;min-height:0}
+html[data-view="desktop"] .row{grid-template-columns:130px 170px 110px 100px minmax(0,1fr);grid-template-areas:"d t p n nt";column-gap:12px;min-height:46px;padding:6px 16px}
+html[data-view="desktop"] .row:hover{background:var(--chip)}
+html[data-view="desktop"] .row:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+html[data-view="desktop"] .d{display:flex;gap:10px;align-items:baseline}
+html[data-view="desktop"] .d span{display:inline}
+html[data-view="desktop"] .d .wd{width:24px}
+html[data-view="desktop"] .i{display:contents}
+html[data-view="desktop"] .p{grid-area:p;font-size:14px;color:var(--grey)}
+html[data-view="desktop"] .p .lbl{display:none}
+html[data-view="desktop"] .nt{grid-area:nt;font-size:14px;color:var(--grey);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html[data-view="desktop"] .p:not([hidden])+.nt:not(:empty)::before{content:none}
+html[data-view="desktop"] dialog{width:min(92vw,480px)}
 </style>
 </head>
 <body>
 <header>
   <h1>Arbeitszeit</h1>
-  <button class="chip" id="bSettings">Einstellungen</button>
+  <button class="chip ibtn" id="bView" type="button"><svg id="icoView" viewBox="0 0 24 24" aria-hidden="true"></svg><span id="viewLbl">Auto</span></button>
+  <button class="chip ibtn" id="bSettings" type="button" aria-label="Einstellungen">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    <span class="lbl">Einstellungen</span>
+  </button>
 </header>
 
-<section class="card">
-  <div id="status">Nicht gestartet</div>
-  <div id="sub"></div>
-  <div class="btns">
-    <button class="big" id="bStart">Start</button>
-    <button class="big" id="bPause" disabled>Pause</button>
-  </div>
-</section>
+<main id="layout">
+  <aside id="side">
+    <section class="card" id="timer">
+      <div id="status">Nicht gestartet</div>
+      <div id="sub"></div>
+      <div class="btns">
+        <button class="big" id="bStart" type="button">Start</button>
+        <button class="big" id="bPause" type="button" disabled>Pause</button>
+      </div>
+    </section>
 
-<nav>
-  <button class="chip" id="bPrev" aria-label="Voriger Monat">‹</button>
-  <button id="monthLabel"></button>
-  <button class="chip" id="bNext" aria-label="Nächster Monat">›</button>
-</nav>
+    <div id="sum"></div>
 
-<div id="list"></div>
-<div id="sum"></div>
-<div class="actions">
-  <button id="bFill">Mo–Fr füllen</button>
-  <button id="bExport">Excel exportieren</button>
-</div>
+    <div class="actions">
+      <button id="bFill" type="button">Mo–Fr füllen</button>
+      <button id="bExport" type="button">Excel exportieren</button>
+    </div>
+  </aside>
+
+  <section id="monthPane">
+    <nav>
+      <button class="chip" id="bPrev" type="button" aria-label="Voriger Monat">‹</button>
+      <button id="monthLabel" type="button" title="Zum aktuellen Monat springen"></button>
+      <button class="chip" id="bNext" type="button" aria-label="Nächster Monat">›</button>
+    </nav>
+    <div id="thead" aria-hidden="true"><span>Datum</span><span>Zeit</span><span>Pause</span><span class="r">Netto</span><span>Stichworte</span></div>
+    <div id="list"></div>
+  </section>
+</main>
 
 <dialog id="dlgDay">
   <form method="dialog" id="fDay">
@@ -148,6 +236,12 @@ input[type=text],input[type=time],input[type=number],select{font:inherit;color:v
       <option value="system">System (automatisch)</option>
       <option value="light">Hell</option>
       <option value="dark">Dunkel</option>
+    </select>
+    <label for="sLayout">Ansicht</label>
+    <select id="sLayout">
+      <option value="auto">Automatisch (nach Bildschirmbreite)</option>
+      <option value="mobile">Mobil</option>
+      <option value="desktop">Desktop</option>
     </select>
     <div class="err" id="setErr"></div>
     <div class="dlgbtns">

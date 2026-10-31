@@ -21,7 +21,7 @@
   var entries = load('az_entries', {});
   var settings = Object.assign({
     company: '', employee: '', project: '', // werden einmalig in den Einstellungen eingetragen (nur lokal gespeichert)
-    defStart: 450, defEnd: 960, defPause: 30, theme: 'system'
+    defStart: 450, defEnd: 960, defPause: 30, theme: 'system', layout: 'auto'
   }, load('az_settings', {}));
 
   /** Design anwenden: 'light' / 'dark' setzen data-theme, 'system' folgt dem Gerät */
@@ -51,6 +51,38 @@
   function nowMin() { var d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
   function parseKey(k) { var p = k.split('-'); return { y: +p[0], m: +p[1], d: +p[2] }; }
   function isEmpty(e) { return !e || (e.s == null && e.e == null && !e.p && !e.n); }
+
+  // ------------------------------------------------------------ Ansicht: Mobil / Desktop
+  var ICONS = {
+    auto: '<rect x="2" y="5" width="14" height="10" rx="1.5"/><rect x="13" y="9" width="8" height="12" rx="1.5"/>',
+    mobile: '<rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/>',
+    desktop: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>'
+  };
+  var VIEW_LABEL = { auto: 'Auto', mobile: 'Mobil', desktop: 'Desktop' };
+  var DESKTOP_MIN_WIDTH = 900; // ab dieser Fensterbreite (CSS-Pixel) schaltet "Auto" auf Desktop
+
+  function effectiveView() {
+    if (settings.layout === 'desktop') return 'desktop';
+    if (settings.layout === 'mobile') return 'mobile';
+    return window.innerWidth >= DESKTOP_MIN_WIDTH ? 'desktop' : 'mobile';
+  }
+
+  function isPhone() { return Math.min(window.screen.width || 9999, window.screen.height || 9999) < 700; }
+  /** Erzwungene Desktop-Ansicht auf einem Handy: Die Seite wird breit gerechnet (1100 px) und verkleinert dargestellt. */
+  function wantsWide(layout) { return layout === 'desktop' && isPhone(); }
+
+  function applyView() {
+    var lay = VIEW_LABEL[settings.layout] ? settings.layout : 'auto';
+    var vp = document.getElementById('vp');
+    if (vp) vp.setAttribute('content', wantsWide(lay) ? 'width=1100' : 'width=device-width, initial-scale=1, viewport-fit=cover');
+    document.documentElement.setAttribute('data-view', effectiveView());
+    $('viewLbl').textContent = VIEW_LABEL[lay];
+    $('icoView').innerHTML = ICONS[lay];
+    var tip = 'Ansicht: ' + VIEW_LABEL[lay] + ' – zum Umschalten tippen';
+    $('bView').title = tip;
+    $('bView').setAttribute('aria-label', tip);
+  }
+  applyView();
 
   var t0 = today();
   var view = { y: t0.y, m: t0.m };
@@ -177,8 +209,9 @@
       row.type = 'button';
       row.className = 'row' + (isRun ? ' run' : k === tk ? ' today' : we ? ' we' : '');
       row.dataset.key = k;
-      var times, tcls = 't none', info = [], netTxt = '';
+      var times, tcls = 't none', pauseTxt = '', hasStart = false, netTxt = '';
       if (e && e.s != null) {
+        hasStart = true;
         if (e.e != null) {
           times = AZ.hhmm(e.s) + ' – ' + AZ.hhmm(e.e); tcls = 't';
           netTxt = AZ.dur(AZ.net(e)) + ' h';
@@ -186,20 +219,27 @@
           if (AZ.net(e) > 0) worked++;
         } else if (isRun) { times = AZ.hhmm(e.s) + ' – läuft'; tcls = 't live'; }
         else { times = AZ.hhmm(e.s) + ' – ?'; tcls = 't open'; }
-        info.push('Pause ' + (e.p || 0) + ' min');
+        pauseTxt = (e.p || 0) + ' min';
       } else times = '–';
-      if (e && e.n) info.push(e.n);
-      row.innerHTML = '<div class="d"></div><div class="m"><div></div><div class="i"></div></div><div class="n"></div>';
-      row.children[0].textContent = AZ.DAYS[AZ.weekday(view.y, view.m, d)] + '\n' + AZ.two(d) + '.' + AZ.two(view.m) + '.';
-      row.children[0].style.whiteSpace = 'pre-line';
-      row.children[1].children[0].className = tcls;
-      row.children[1].children[0].textContent = times;
-      row.children[1].children[1].textContent = info.join('  ·  ');
-      row.children[1].children[1].hidden = !info.length;
-      row.children[2].textContent = netTxt;
+      var note = e && e.n ? e.n : '';
+      // Zellen: Datum | Zeit | Pause + Stichworte (auf dem Handy unter der Zeit, am Desktop eigene Spalten) | Netto
+      row.innerHTML = '<div class="d"><span class="wd"></span><span class="dt"></span></div><div class="t"></div>' +
+        '<div class="i"><span class="p"><span class="lbl">Pause </span><span class="pv"></span></span><span class="nt"></span></div><div class="n"></div>';
+      row.querySelector('.wd').textContent = AZ.DAYS[AZ.weekday(view.y, view.m, d)];
+      row.querySelector('.dt').textContent = AZ.two(d) + '.' + AZ.two(view.m) + '.';
+      var tEl = row.querySelector('.t');
+      tEl.className = tcls; tEl.textContent = times;
+      row.querySelector('.pv').textContent = pauseTxt;
+      row.querySelector('.p').hidden = !hasStart;
+      row.querySelector('.nt').textContent = note;
+      row.querySelector('.i').hidden = !hasStart && !note;
+      row.querySelector('.n').textContent = netTxt;
       list.appendChild(row);
     }
-    $('sum').textContent = 'Netto ' + AZ.dur(sumNet) + ' h  ·  Pausen ' + AZ.dur(sumPause) + ' h  ·  ' + worked + (worked === 1 ? ' Tag' : ' Tage');
+    $('sum').innerHTML =
+      '<span class="s"><small>Netto</small><b>' + AZ.dur(sumNet) + ' h</b></span>' +
+      '<span class="s"><small>Pausen</small><b>' + AZ.dur(sumPause) + ' h</b></span>' +
+      '<span class="s"><small>' + (worked === 1 ? 'Tag' : 'Tage') + '</small><b>' + worked + '</b></span>';
     tick();
   }
 
@@ -266,6 +306,7 @@
     $('sEnd').value = AZ.hhmm(settings.defEnd);
     $('sPause').value = settings.defPause;
     $('sTheme').value = settings.theme || 'system';
+    $('sLayout').value = VIEW_LABEL[settings.layout] ? settings.layout : 'auto';
     $('setErr').textContent = '';
     $('dlgSet').showModal();
   }
@@ -275,10 +316,13 @@
     if (s == null || e == null) { err.textContent = 'Bitte Zeiten im Format HH:MM angeben, z. B. 07:30.'; return false; }
     if (e <= s) { err.textContent = 'Das Standard-Ende muss nach dem Standard-Start liegen.'; return false; }
     if (isNaN(p) || p < 0) { err.textContent = 'Bitte die Pause in Minuten angeben.'; return false; }
+    var wasWide = wantsWide(settings.layout);
     settings = { company: $('sCompany').value.trim(), employee: $('sEmployee').value.trim(), project: $('sProject').value.trim(),
-      defStart: s, defEnd: e, defPause: p, theme: $('sTheme').value };
+      defStart: s, defEnd: e, defPause: p, theme: $('sTheme').value, layout: $('sLayout').value };
     save('az_settings', settings);
+    if (wasWide !== wantsWide(settings.layout)) { location.reload(); return true; }
     applyTheme();
+    applyView();
     $('dlgSet').close(); toast('Gespeichert');
     return true;
   }
@@ -389,6 +433,21 @@
     delete entries[editKey]; saveEntries(); $('dlgDay').close(); render();
   };
   $('bSettings').onclick = openSettings;
+  // Kleiner Button oben rechts: Auto -> Mobil -> Desktop -> Auto
+  $('bView').onclick = function () {
+    var order = ['auto', 'mobile', 'desktop'];
+    var wasWide = wantsWide(settings.layout);
+    settings.layout = order[(order.indexOf(settings.layout) + 1) % order.length];
+    save('az_settings', settings);
+    // Handy-Browser übernehmen eine geänderte Viewport-Breite nicht zuverlässig im laufenden Betrieb: dann neu laden
+    if (wasWide !== wantsWide(settings.layout)) { location.reload(); return; }
+    applyView();
+    toast('Ansicht: ' + VIEW_LABEL[settings.layout]);
+  };
+  // In der Einstellung "Auto" folgt die Ansicht der Fensterbreite (auch beim Drehen oder Größe ändern)
+  window.addEventListener('resize', function () {
+    if (settings.layout !== 'mobile' && settings.layout !== 'desktop') applyView();
+  });
   $('fSet').onsubmit = function (ev) { ev.preventDefault(); saveSettings(); };
   $('bSetCancel').onclick = function () { $('dlgSet').close(); };
   $('bFill').onclick = fillWeekdays;

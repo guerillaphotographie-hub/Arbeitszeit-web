@@ -1,5 +1,5 @@
 /* Service Worker: macht die App offline nutzbar (Dateien werden beim ersten Besuch gespeichert). */
-var CACHE = 'arbeitszeit-v2';
+var CACHE = 'arbeitszeit-v3';
 var FILES = ['./', 'index.html', 'app.js', 'core.js', 'xlsx-assets.js', 'manifest.webmanifest',
   'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 
