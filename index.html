@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Arbeitszeit</title>
+<meta name="theme-color" content="#1f6f8b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Arbeitszeit">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>
+/* Design vor dem ersten Zeichnen setzen, damit es nicht aufblitzt */
+try{var s=JSON.parse(localStorage.getItem('az_settings')||'{}');
+if(s.theme==='light'||s.theme==='dark')document.documentElement.setAttribute('data-theme',s.theme);}catch(e){}
+</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f2f4f7;--card:#fff;--text:#1b1f23;--grey:#6b7580;--primary:#1f6f8b;--green:#2e7d32;
+  --btn:#1f6f8b;--btngrey:#6b7580;
+  --red:#c62828;--amber:#ef6c00;--line:#e3e6ea;--today:#e3f1f7;--weekend:#f0f0f2;--running:#e4f3e5;--chip:#e6eef2;
+}
+/* Design: "System" folgt dem Gerät, "Hell"/"Dunkel" setzen data-theme auf <html> */
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#101316;--card:#1b2026;--text:#eef1f4;--grey:#9aa5b1;--primary:#59b3d1;--green:#388e3c;--line:#2b323a;
+    --today:#16323d;--weekend:#161b20;--running:#17301a;--chip:#26323a}
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#101316;--card:#1b2026;--text:#eef1f4;--grey:#9aa5b1;--primary:#59b3d1;--green:#388e3c;--line:#2b323a;
+  --today:#16323d;--weekend:#161b20;--running:#17301a;--chip:#26323a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  display:flex;flex-direction:column;padding:max(12px,env(safe-area-inset-top)) 12px max(10px,env(safe-area-inset-bottom));
+  max-width:640px;margin:0 auto;gap:10px}
+header{display:flex;align-items:center;gap:8px}
+h1{font-size:22px;margin:0;flex:1}
+button{font:inherit;color:inherit;border:0;cursor:pointer}
+.chip{background:var(--chip);color:var(--primary);border-radius:10px;padding:10px 14px;font-size:15px}
+.card{background:var(--card);border-radius:16px;padding:14px 16px}
+#status{font-size:20px;font-weight:700}
+#sub{color:var(--grey);font-size:15px;margin-top:2px}
+.btns{display:flex;gap:12px;margin-top:12px}
+.big{flex:1;height:56px;border-radius:12px;color:#fff;font-size:18px;font-weight:700}
+.big:disabled{opacity:.4}
+#bStart{background:var(--green)}#bStart.run{background:var(--red)}
+#bPause{background:var(--amber)}#bPause.resume{background:var(--btn)}
+nav{display:flex;align-items:center}
+nav button{width:52px;height:44px;font-size:22px}
+#monthLabel{flex:1;text-align:center;font-size:18px;font-weight:700;background:none;padding:8px}
+#list{flex:1;overflow-y:auto;background:var(--card);border-radius:12px;min-height:120px;-webkit-overflow-scrolling:touch}
+.row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--card);padding:8px 12px;min-height:54px;border-bottom:1px solid var(--line)}
+.row.we{background:var(--weekend)}.row.today{background:var(--today)}.row.run{background:var(--running)}
+.d{width:52px;font-weight:700;font-size:14px;line-height:1.25}.we .d{color:var(--grey)}
+.m{flex:1;min-width:0}
+.t{font-size:16px}.t.live{color:var(--green)}.t.open{color:var(--amber)}.t.none{color:var(--grey)}
+.i{font-size:12px;color:var(--grey);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.n{width:70px;text-align:right;font-weight:700}
+#sum{text-align:center;font-size:14px}
+.actions{display:flex;gap:12px}
+.actions button{height:48px;border-radius:12px;color:#fff;font-size:14px;font-weight:700}
+#bFill{flex:1;background:var(--btngrey)}#bExport{flex:1.4;background:var(--btn)}
+dialog{border:0;border-radius:16px;padding:0;width:min(92vw,420px);background:var(--card);color:var(--text)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog form{padding:18px 20px 14px;display:flex;flex-direction:column;gap:4px}
+dialog h2{margin:0 0 6px;font-size:18px}
+label{font-size:13px;color:var(--grey);margin-top:8px}
+input[type=text],input[type=time],input[type=number],select{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;width:100%}
+.check{display:flex;gap:10px;align-items:center;color:var(--text);font-size:15px;margin:4px 0}
+.check input{width:20px;height:20px}
+.hint{font-size:13px;color:var(--grey);margin-top:6px}
+.err{color:var(--red);font-size:14px;min-height:18px;margin-top:6px}
+.dlgbtns{display:flex;gap:8px;margin-top:10px;justify-content:flex-end;flex-wrap:wrap}
+.dlgbtns button{padding:11px 16px;border-radius:10px;background:var(--chip);color:var(--primary);font-weight:600}
+.dlgbtns .ok{background:var(--btn);color:#fff}
+.dlgbtns .del{margin-right:auto;color:var(--red)}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <h1>Arbeitszeit</h1>
+  <button class="chip" id="bSettings">Einstellungen</button>
+</header>
+
+<section class="card">
+  <div id="status">Nicht gestartet</div>
+  <div id="sub"></div>
+  <div class="btns">
+    <button class="big" id="bStart">Start</button>
+    <button class="big" id="bPause" disabled>Pause</button>
+  </div>
+</section>
+
+<nav>
+  <button class="chip" id="bPrev" aria-label="Voriger Monat">‹</button>
+  <button id="monthLabel"></button>
+  <button class="chip" id="bNext" aria-label="Nächster Monat">›</button>
+</nav>
+
+<div id="list"></div>
+<div id="sum"></div>
+<div class="actions">
+  <button id="bFill">Mo–Fr füllen</button>
+  <button id="bExport">Excel exportieren</button>
+</div>
+
+<dialog id="dlgDay">
+  <form method="dialog" id="fDay">
+    <h2 id="dayTitle"></h2>
+    <label class="check"><input type="checkbox" id="fOff"> Keine Arbeitszeit (z. B. Urlaub, Feiertag)</label>
+    <div id="timeBox">
+      <label for="fStart">Start</label><input type="time" id="fStart">
+      <div id="endWrap"><label for="fEnd">Ende</label><input type="time" id="fEnd"></div>
+      <div class="hint" id="runHint" hidden>Die Erfassung läuft noch – das Ende wird beim Stoppen gesetzt.</div>
+      <label for="fPause">Pause (Minuten)</label><input type="number" id="fPause" inputmode="numeric" min="0" step="1">
+      <button type="button" class="chip" id="bDefault" style="margin-top:10px;align-self:flex-start">Standardzeit einsetzen</button>
+    </div>
+    <label for="fNote">Stichworte</label><input type="text" id="fNote" autocomplete="off">
+    <div class="err" id="dayErr"></div>
+    <div class="dlgbtns">
+      <button type="button" class="del" id="bClear">Leeren</button>
+      <button type="button" id="bDayCancel">Abbrechen</button>
+      <button type="submit" class="ok" id="bDaySave">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgSet">
+  <form method="dialog" id="fSet">
+    <h2>Einstellungen</h2>
+    <label for="sCompany">Firma</label><input type="text" id="sCompany">
+    <label for="sEmployee">Mitarbeiter</label><input type="text" id="sEmployee">
+    <label for="sProject">Projekt (Kürzel)</label><input type="text" id="sProject">
+    <label for="sStart">Standard-Start</label><input type="time" id="sStart">
+    <label for="sEnd">Standard-Ende</label><input type="time" id="sEnd">
+    <label for="sPause">Standard-Pause (Minuten)</label><input type="number" id="sPause" inputmode="numeric" min="0" step="1">
+    <label for="sTheme">Design</label>
+    <select id="sTheme">
+      <option value="system">System (automatisch)</option>
+      <option value="light">Hell</option>
+      <option value="dark">Dunkel</option>
+    </select>
+    <div class="err" id="setErr"></div>
+    <div class="dlgbtns">
+      <button type="button" id="bSetCancel">Abbrechen</button>
+      <button type="submit" class="ok">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgName">
+  <form method="dialog" id="fName">
+    <h2>Exportieren</h2>
+    <label for="nName">Dateiname (die Endung .xlsx wird automatisch angehängt)</label>
+    <input type="text" id="nName" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div class="hint">Vorgabe: Stunden_Projekt_Mitarbeiter_Monat_Jahr, aus den Einstellungen übernommen.</div>
+    <button type="button" class="chip" id="bNameReset" style="margin-top:8px;align-self:flex-start">Standardname</button>
+    <div class="err" id="nameErr"></div>
+    <div class="dlgbtns">
+      <button type="button" id="bNameCancel">Abbrechen</button>
+      <button type="submit" class="ok">Exportieren</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgMsg">
+  <form method="dialog">
+    <h2 id="msgTitle"></h2>
+    <div id="msgText" style="white-space:pre-line"></div>
+    <div class="dlgbtns" id="msgBtns"></div>
+  </form>
+</dialog>
+
+<div id="toast"></div>
+
+<script src="xlsx-assets.js"></script>
+<script src="core.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
